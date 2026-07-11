@@ -29,6 +29,34 @@ router = APIRouter()
 
 import app.state
 from datetime import datetime
+from akatsuki_pp_py import Beatmap as CalcBeatmap, Calculator as CalcCalculator
+import os
+
+_max_pp_cache: dict[tuple[int, int], int] = {}
+
+def get_real_theoretical_max_pp(map_id: int, mode: int, diff: float) -> int:
+    cache_key = (map_id, mode)
+    if cache_key in _max_pp_cache:
+        return _max_pp_cache[cache_key]
+        
+    osu_file_path = f".data/osu/{map_id}.osu"
+    if os.path.exists(osu_file_path):
+        try:
+            calc_bmap = CalcBeatmap(path=osu_file_path)
+            calculator = CalcCalculator(
+                mode=mode,
+                acc=100.0,
+            )
+            result = calculator.performance(calc_bmap)
+            val = int(round(result.pp))
+            _max_pp_cache[cache_key] = val
+            return val
+        except Exception:
+            pass
+            
+    # Fallback to the power-law estimate
+    return int(round(8.0 * (diff ** 2.2)))
+
 
 @router.get("/maps/keys")
 async def get_maps_keys() -> Success[list[int]] | Failure:
@@ -106,13 +134,13 @@ async def get_mapsets(
                MAX(m.diff) AS max_diff,
                COUNT(m.id) AS diffs_count,
                MAX(m.cs) AS cs,
-                GROUP_CONCAT(CONCAT(m.id, '::', m.cs, '::', m.diff, '::', m.version) ORDER BY m.diff ASC SEPARATOR '|||') AS diffs,
-                COALESCE((
-                    SELECT COUNT(DISTINCT s.userid) 
-                    FROM scores s 
-                    JOIN maps m2 ON s.map_md5 = m2.md5 
-                    WHERE m2.set_id = m.set_id
-                ), 0) AS players_count,
+               GROUP_CONCAT(CONCAT(m.id, '::', m.cs, '::', m.diff, '::', m.mode, '::', m.version) ORDER BY m.diff ASC SEPARATOR '|||') AS diffs,
+               COALESCE((
+                   SELECT COUNT(DISTINCT s.userid) 
+                   FROM scores s 
+                   JOIN maps m2 ON s.map_md5 = m2.md5 
+                   WHERE m2.set_id = m.set_id
+               ), 0) AS players_count,
                COALESCE((
                    SELECT MAX(pp) 
                    FROM scores s 
@@ -135,31 +163,42 @@ async def get_mapsets(
             clean_date = set_dict["last_update"].replace("Z", "+00:00")
             set_dict["last_update"] = datetime.fromisoformat(clean_date)
             
-        max_diff = set_dict["max_diff"]
-        theoretical_max_pp = int(round(8.0 * (max_diff ** 2.2)))
-        
-        max_pp = int(round(set_dict["max_pp"]))
-        theoretical_max_pp = max(theoretical_max_pp, max_pp)
-        
-        set_dict["max_pp"] = max_pp
-        set_dict["theoretical_max_pp"] = theoretical_max_pp
-        set_dict["players_count"] = int(round(set_dict.get("players_count", 0)))
-        
         diffs = []
         if set_dict.get("diffs"):
             for item in set_dict["diffs"].split("|||"):
-                parts = item.split("::", 3)
-                if len(parts) == 4:
+                parts = item.split("::", 4)
+                if len(parts) == 5:
                     try:
                         diffs.append({
                             "id": int(parts[0]),
                             "cs": float(parts[1]),
                             "diff": float(parts[2]),
-                            "version": parts[3]
+                            "mode": int(parts[3]),
+                            "version": parts[4]
                         })
                     except (ValueError, TypeError):
                         continue
         set_dict["difficulties"] = diffs
+
+        max_pp = int(round(set_dict["max_pp"]))
+        
+        # Calculate the real theoretical max PP from the difficulties
+        theoretical_max_pp = 0
+        for d in diffs:
+            real_pp = get_real_theoretical_max_pp(d["id"], d["mode"], d["diff"])
+            if real_pp > theoretical_max_pp:
+                theoretical_max_pp = real_pp
+                
+        if theoretical_max_pp == 0:
+            # Fallback if no difficulties
+            theoretical_max_pp = int(round(8.0 * (set_dict["max_diff"] ** 2.2)))
+
+        # Still make sure we don't display a value lower than the highest achieved max_pp
+        theoretical_max_pp = max(theoretical_max_pp, max_pp)
+        
+        set_dict["max_pp"] = max_pp
+        set_dict["theoretical_max_pp"] = theoretical_max_pp
+        set_dict["players_count"] = int(round(set_dict.get("players_count", 0)))
         
         response.append(MapSet.model_validate(set_dict))
 
@@ -273,7 +312,7 @@ async def get_maps(
             map_dict["last_update"] = datetime.fromisoformat(clean_date)
             
         diff = map_dict["diff"]
-        theoretical_max_pp = int(round(8.0 * (diff ** 2.2)))
+        theoretical_max_pp = get_real_theoretical_max_pp(map_dict["id"], map_dict["mode"], diff)
         
         max_pp = int(round(map_dict["max_pp"]))
         theoretical_max_pp = max(theoretical_max_pp, max_pp)
