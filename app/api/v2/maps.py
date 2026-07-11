@@ -32,12 +32,32 @@ from datetime import datetime
 from akatsuki_pp_py import Beatmap as CalcBeatmap, Calculator as CalcCalculator
 import os
 
-_max_pp_cache: dict[tuple[int, int], int] = {}
+import json
+
+CACHE_FILE = ".data/theoretical_max_pp_cache.json"
+
+def load_disk_cache() -> dict[str, int]:
+    if os.path.exists(CACHE_FILE):
+        try:
+            with open(CACHE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_disk_cache(cache: dict[str, int]) -> None:
+    try:
+        os.makedirs(os.path.dirname(CACHE_FILE), exist_ok=True)
+        with open(CACHE_FILE, "w") as f:
+            json.dump(cache, f)
+    except Exception:
+        pass
 
 def get_real_theoretical_max_pp(map_id: int, mode: int, diff: float) -> int:
-    cache_key = (map_id, mode)
-    if cache_key in _max_pp_cache:
-        return _max_pp_cache[cache_key]
+    cache_key = f"{map_id}_{mode}"
+    cache = load_disk_cache()
+    if cache_key in cache:
+        return cache[cache_key]
         
     osu_file_path = f".data/osu/{map_id}.osu"
     if os.path.exists(osu_file_path):
@@ -49,7 +69,9 @@ def get_real_theoretical_max_pp(map_id: int, mode: int, diff: float) -> int:
             )
             result = calculator.performance(calc_bmap)
             val = int(round(result.pp))
-            _max_pp_cache[cache_key] = val
+            
+            cache[cache_key] = val
+            save_disk_cache(cache)
             return val
         except Exception:
             pass
@@ -169,12 +191,20 @@ async def get_mapsets(
                 parts = item.split("::", 4)
                 if len(parts) == 5:
                     try:
+                        d_id = int(parts[0])
+                        cs = float(parts[1])
+                        diff = float(parts[2])
+                        mode = int(parts[3])
+                        version = parts[4]
+                        
+                        t_max_pp = get_real_theoretical_max_pp(d_id, mode, diff)
+                        
                         diffs.append({
-                            "id": int(parts[0]),
-                            "cs": float(parts[1]),
-                            "diff": float(parts[2]),
-                            "mode": int(parts[3]),
-                            "version": parts[4]
+                            "id": d_id,
+                            "cs": cs,
+                            "diff": diff,
+                            "version": version,
+                            "theoretical_max_pp": t_max_pp
                         })
                     except (ValueError, TypeError):
                         continue
@@ -185,7 +215,7 @@ async def get_mapsets(
         # Calculate the real theoretical max PP from the difficulties
         theoretical_max_pp = 0
         for d in diffs:
-            real_pp = get_real_theoretical_max_pp(d["id"], d["mode"], d["diff"])
+            real_pp = d["theoretical_max_pp"]
             if real_pp > theoretical_max_pp:
                 theoretical_max_pp = real_pp
                 
