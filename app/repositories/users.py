@@ -40,7 +40,7 @@ class UsersTable(Base):
     latest_activity = Column(Integer, nullable=False, server_default="0")
     clan_id = Column(Integer, nullable=False, server_default="0")
     clan_priv = Column(TINYINT, nullable=False, server_default="0")
-    preferred_mode = Column(Integer, nullable=False, server_default="0")
+    preferred_mode = Column(Integer, nullable=False, server_default="3")
     play_style = Column(Integer, nullable=False, server_default="0")
     custom_badge_name = Column(String(16, collation="utf8"))
     custom_badge_icon = Column(String(64))

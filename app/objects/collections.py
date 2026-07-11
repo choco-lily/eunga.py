@@ -261,9 +261,11 @@ class Players(list[Player]):
             return
 
         super().remove(player)
-        del self._by_token[player.token]
-        del self._by_id[player.id]
-        del self._by_name[player.safe_name]
+        
+        # del 대신 pop(키, None)을 사용하여 KeyError를 원천 차단합니다.
+        self._by_token.pop(player.token, None)
+        self._by_id.pop(player.id, None)
+        self._by_name.pop(player.safe_name, None)
 
 
 async def initialize_ram_caches() -> None:

@@ -229,16 +229,16 @@ def display_startup_dialog() -> None:
 
     # running on root/admin grants the software potentally dangerous and
     # unnecessary power over the operating system and is not advised.
-    if is_running_as_admin():
-        log(
-            "It is not recommended to run bancho.py as root/admin, especially in production."
-            + (
-                " You are at increased risk as developer mode is enabled."
-                if app.settings.DEVELOPER_MODE
-                else ""
-            ),
-            Ansi.LYELLOW,
-        )
+    # if is_running_as_admin():
+    #     log(
+    #         "It is not recommended to run bancho.py as root/admin, especially in production."
+    #         + (
+    #             " You are at increased risk as developer mode is enabled."
+    #             if app.settings.DEVELOPER_MODE
+    #             else ""
+    #         ),
+    #         Ansi.LYELLOW,
+    #     )
 
     if not has_internet_connectivity():
         log("No internet connectivity detected", Ansi.LYELLOW)

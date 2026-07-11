@@ -619,6 +619,8 @@ def build_score_submission_error_response(
         return b""
     if error.code is ScoreSubmissionErrorCode.DUPLICATE_SUBMISSION:
         return b"error: no"
+    if error.code is ScoreSubmissionErrorCode.INVALID_GAMEMODE:
+        return b"error: no"
 
     raise ValueError(f"Unexpected score submission error: {error.code!r}")
 

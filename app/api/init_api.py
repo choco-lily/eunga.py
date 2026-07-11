@@ -76,13 +76,31 @@ async def lifespan(asgi_app: BanchoAPI) -> AsyncIterator[None]:
 
     app.state.loop = asyncio.get_running_loop()
 
-    if app.utils.is_running_as_admin():
-        log(
-            "Running the server with root privileges is not recommended.",
-            Ansi.LYELLOW,
-        )
+    import warnings
+    warnings.filterwarnings("ignore", category=Warning)
+
+    # if app.utils.is_running_as_admin():
+    #     log(
+    #         "Running the server with root privileges is not recommended.",
+    #         Ansi.LYELLOW,
+    #     )
 
     await app.state.services.database.connect()
+    await app.state.services.database.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            type VARCHAR(32) NOT NULL,
+            title VARCHAR(256) NOT NULL,
+            content TEXT NOT NULL,
+            link VARCHAR(256) NULL,
+            is_read TINYINT DEFAULT 0 NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+            INDEX idx_user_id (user_id),
+            INDEX idx_is_read (is_read)
+        );
+    """)
+
     await app.state.services.redis.initialize()  # type: ignore[unused-awaitable]
 
     if app.state.services.datadog is not None:

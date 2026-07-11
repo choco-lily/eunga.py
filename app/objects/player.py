@@ -100,7 +100,7 @@ class Status:
     info_text: str = ""
     map_md5: str = ""
     mods: Mods = Mods.NOMOD
-    mode: GameMode = GameMode.VANILLA_OSU
+    mode: GameMode = GameMode.VANILLA_MANIA
     map_id: int = 0
 
 
@@ -268,6 +268,9 @@ class Player:
 
         self.stats: dict[GameMode, ModeData] = {}
         self.status = Status()
+
+        self.session_play_count = 0
+        self.session_play_history: list[dict] = []
 
         # userids, not player objects
         self.friends: set[int] = set()

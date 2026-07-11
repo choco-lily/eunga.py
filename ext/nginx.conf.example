@@ -6,14 +6,106 @@ upstream bancho {
     server 127.0.0.1:${APP_PORT};
 }
 
-# rate limits protecting the web authentication endpoints from abuse;
-# registration is limited strictly to prevent automated account creation,
-# and logins are limited to slow down credential stuffing.
 limit_req_zone $binary_remote_addr zone=bancho_registrations:10m rate=1r/m;
 limit_req_zone $binary_remote_addr zone=bancho_logins:10m rate=10r/m;
 limit_req_zone $binary_remote_addr zone=bancho_avatar_uploads:10m rate=10r/m;
 
+# HTTP Redirect for Web Frontend
 server {
+	listen 80;
+	server_name ${DOMAIN};
+	return 301 https://$host$request_uri;
+}
+
+# 1. Web Frontend Server Block (osu.xn--o39a013c.tv)
+server {
+	listen 443 ssl;
+	server_name ${DOMAIN};
+	client_max_body_size 20M;
+
+	ssl_certificate     ${SSL_CERT_PATH};
+	ssl_certificate_key ${SSL_KEY_PATH};
+	ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
+
+	# Serve static files for the frontend
+	location / {
+		root /home/ubuntu/osu/bancho-web.ts/dist;
+		try_files $uri /index.html;
+	}
+
+	# Proxy game client web endpoints
+	location /web/ {
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Real-IP  $remote_addr;
+		proxy_set_header Host $http_host;
+		add_header Access-Control-Allow-Origin *;
+		proxy_redirect off;
+		proxy_pass http://bancho;
+	}
+
+	# Proxy beatmap downloads
+	location /d/ {
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Real-IP  $remote_addr;
+		proxy_set_header Host $http_host;
+		add_header Access-Control-Allow-Origin *;
+		proxy_redirect off;
+		proxy_pass http://bancho;
+	}
+
+	# Proxy API requests to backend with Host rewritten to api.${DOMAIN}
+	location = /api/v2/accounts {
+		limit_req zone=bancho_registrations burst=3 nodelay;
+		limit_req_status 429;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Real-IP  $remote_addr;
+		proxy_set_header Host api.${DOMAIN};
+		add_header Access-Control-Allow-Origin *;
+		rewrite ^/api/(.*)$ /$1 break;
+		proxy_redirect off;
+		proxy_pass http://bancho;
+	}
+
+	location = /api/v2/sessions {
+		limit_req zone=bancho_logins burst=5 nodelay;
+		limit_req_status 429;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Real-IP  $remote_addr;
+		proxy_set_header Host api.${DOMAIN};
+		add_header Access-Control-Allow-Origin *;
+		rewrite ^/api/(.*)$ /$1 break;
+		proxy_redirect off;
+		proxy_pass http://bancho;
+	}
+
+	location ~ ^/api/v2/players/\d+/avatar$ {
+		limit_req zone=bancho_avatar_uploads burst=5 nodelay;
+		limit_req_status 429;
+		client_max_body_size 4m;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Real-IP  $remote_addr;
+		proxy_set_header Host api.${DOMAIN};
+		add_header Access-Control-Allow-Origin *;
+		rewrite ^/api/(.*)$ /$1 break;
+		proxy_redirect off;
+		proxy_pass http://bancho;
+	}
+
+	location /api/ {
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Real-IP  $remote_addr;
+		proxy_set_header Host api.${DOMAIN};
+		add_header Access-Control-Allow-Origin *;
+		rewrite ^/api/(.*)$ /$1 break;
+		proxy_redirect off;
+		proxy_pass http://bancho;
+	}
+}
+
+# 2. Game Client and Direct APIs Server Block (c.DOMAIN, ce.DOMAIN, api.DOMAIN, osu.DOMAIN, etc.)
+server {
+	# Listen on both port 80 and 443 to support HTTP fallback connection from game client
+	listen 80;
 	listen 443 ssl;
 	server_name c.${DOMAIN} ce.${DOMAIN} c4.${DOMAIN} osu.${DOMAIN} b.${DOMAIN} api.${DOMAIN};
 	client_max_body_size 20M;
@@ -22,7 +114,7 @@ server {
 	ssl_certificate_key ${SSL_KEY_PATH};
 	ssl_ciphers "EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH:@SECLEVEL=1";
 
-	# account registration (POST /v2/accounts on api.${DOMAIN})
+	# Direct API registration from client
 	location = /v2/accounts {
 		limit_req zone=bancho_registrations burst=3 nodelay;
 		limit_req_status 429;
@@ -34,7 +126,7 @@ server {
 		proxy_pass http://bancho;
 	}
 
-	# login (POST /v2/sessions on api.${DOMAIN})
+	# Direct API login from client
 	location = /v2/sessions {
 		limit_req zone=bancho_logins burst=5 nodelay;
 		limit_req_status 429;
@@ -46,7 +138,7 @@ server {
 		proxy_pass http://bancho;
 	}
 
-	# avatar uploads (PUT /v2/players/{id}/avatar on api.${DOMAIN})
+	# Direct API avatar upload from client
 	location ~ ^/v2/players/\d+/avatar$ {
 		limit_req zone=bancho_avatar_uploads burst=5 nodelay;
 		limit_req_status 429;
@@ -58,6 +150,7 @@ server {
 		proxy_pass http://bancho;
 	}
 
+	# Fallback: Proxy everything to the backend (crucial for POST / login request!)
 	location / {
 		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 		proxy_set_header X-Real-IP  $remote_addr;
@@ -68,6 +161,7 @@ server {
 	}
 }
 
+# 3. Assets Server Block
 server {
 	listen 443 ssl;
 	server_name assets.${DOMAIN};
@@ -82,6 +176,7 @@ server {
 	}
 }
 
+# 4. Avatars Server Block
 server {
 	listen 443 ssl;
 	server_name a.${DOMAIN};

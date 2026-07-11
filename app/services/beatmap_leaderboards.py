@@ -116,13 +116,11 @@ class BeatmapLeaderboardService:
         # we've found a beatmap for the request.
         self.increment_metric("bancho.leaderboards_served")
 
-        if bmap.status < RankedStatus.Ranked:
-            # only show leaderboards for ranked,
-            # approved, qualified, or loved maps.
-            return BeatmapLeaderboardResult(
-                code=BeatmapLeaderboardResultCode.NO_LEADERBOARD,
-                ranked_status=bmap.status,
-            )
+        # if bmap.status not in (RankedStatus.Ranked, RankedStatus.Qualified, RankedStatus.Loved):
+        #     return BeatmapLeaderboardResult(
+        #         code=BeatmapLeaderboardResultCode.NO_LEADERBOARD,
+        #         ranked_status=bmap.status,
+        # )
 
         if not request.requesting_from_editor_song_select:
             leaderboard_scores = await self.score_leaderboards.fetch_leaderboard_scores(

@@ -405,7 +405,7 @@ async def top(ctx: Context) -> str | None:
         "WHERE s.userid = :user_id "
         "AND s.mode = :mode "
         "AND s.status = 2 "
-        "AND b.status in (2, 3) "
+        "AND b.status >= -2 "  # 기존 'in (2, 3)' 대신 '>= 0'으로 변경하여 모든 맵 상태 허용
         "ORDER BY s.pp DESC LIMIT 10",
         {"user_id": user.id, "mode": mode},
     )

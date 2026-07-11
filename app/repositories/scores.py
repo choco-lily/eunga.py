@@ -547,12 +547,8 @@ class ScoresRepository:
                 ScoresTable.userid == user_id,
                 ScoresTable.mode == mode,
                 ScoresTable.status == SubmissionStatus.BEST.value,
-                MapsTable.status.in_(
-                    (
-                        RankedStatus.Ranked.value,
-                        RankedStatus.Approved.value,
-                    ),
-                ),
+                # 기존 .in_(...) 조건을 제거하고 아래 조건으로 교체하여 비랭크 맵을 집계에 포함시킵니다.
+                MapsTable.status >= -2,
             )
             .order_by(ScoresTable.pp.desc())
         )
@@ -783,16 +779,18 @@ class ScoresRepository:
                 select_stmt = select_stmt.where(mods_match != 0)
 
         if scope == "best":
-            allowed_map_statuses = [
-                RankedStatus.Ranked.value,
-                RankedStatus.Approved.value,
-            ]
-            if include_loved:
-                allowed_map_statuses.append(RankedStatus.Loved.value)
+            # 모든 맵 상태를 허용하므로 리스트 정의와 include_loved 조건문은 주석 처리하거나 무시해도 됩니다.
+            # allowed_map_statuses = [
+            #     RankedStatus.Ranked.value,
+            #     RankedStatus.Approved.value,
+            # ]
+            # if include_loved:
+            #     allowed_map_statuses.append(RankedStatus.Loved.value)
 
             select_stmt = select_stmt.where(
                 ScoresTable.status == SubmissionStatus.BEST.value,
-                MapsTable.status.in_(allowed_map_statuses),
+                # 기존 .in_(allowed_map_statuses) 대신 >= -2 조건을 넣어 Graveyard, Pending까지 모두 포함시킵니다.
+                MapsTable.status >= -2, 
             )
             sort_column = ScoresTable.pp
         else:

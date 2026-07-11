@@ -16,8 +16,7 @@ from app.api.v2.common import responses
 from app.api.v2.common.parameters import GameModeParam
 from app.api.v2.common.responses import Failure
 from app.api.v2.common.responses import Success
-from app.api.v2.models.maps import Map
-from app.api.v2.models.maps import MapRating
+from app.api.v2.models.maps import Map, MapRating, MapSet
 from app.api.v2.models.scores import MapScore
 from app.api.v2.models.scores import ScorePlayer
 from app.constants.gamemodes import GameMode
@@ -27,6 +26,148 @@ from app.services.scores import ScoresService
 
 router = APIRouter()
 
+
+import app.state
+from datetime import datetime
+
+@router.get("/maps/keys")
+async def get_maps_keys() -> Success[list[int]] | Failure:
+    rows = await app.state.services.database.fetch_all(
+        "SELECT DISTINCT cs FROM maps WHERE cs > 0 ORDER BY cs ASC"
+    )
+    keys = [int(row["cs"]) for row in rows]
+    return responses.success(keys)
+
+@router.get("/mapsets")
+async def get_mapsets(
+    *,
+    status: int | None = None,
+    mode: int | None = None,
+    query: str | None = None,
+    keys: int | None = None,
+    sort: str | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=100),
+) -> Success[list[MapSet]] | Failure:
+    query_parts = []
+    params = {}
+
+    if status is not None:
+        query_parts.append("m.status = :status")
+        params["status"] = status
+    if mode is not None:
+        query_parts.append("m.mode = :mode")
+        params["mode"] = mode
+
+    if query and query.strip():
+        query_parts.append("(m.title LIKE :search_query OR m.artist LIKE :search_query OR m.creator LIKE :search_query OR m.filename LIKE :search_query)")
+        params["search_query"] = f"%{query.strip()}%"
+
+    if keys is not None:
+        query_parts.append("m.cs = :keys")
+        params["keys"] = keys
+
+    where_clause = " AND ".join(query_parts) if query_parts else "1=1"
+
+    order_by = "total_plays DESC"
+    if sort == "newest":
+        order_by = "max_id DESC"
+    elif sort == "diff_asc":
+        order_by = "min_diff ASC"
+    elif sort == "diff_desc":
+        order_by = "max_diff DESC"
+    elif sort == "players_desc":
+        order_by = "players_count DESC"
+    elif sort == "max_pp_desc":
+        order_by = "max_pp DESC"
+    elif sort == "theoretical_max_pp_desc":
+        order_by = "max_diff DESC"
+
+    offset = (page - 1) * page_size
+    params["limit"] = page_size
+    params["offset"] = offset
+
+    count_row = await app.state.services.database.fetch_one(
+        f"SELECT COUNT(DISTINCT m.set_id) AS total FROM maps m WHERE {where_clause}",
+        {k: v for k, v in params.items() if k not in ("limit", "offset")}
+    )
+    total_mapsets = count_row["total"] if count_row else 0
+
+    sql = f"""
+        SELECT m.set_id AS id,
+               MAX(m.id) AS max_id,
+               m.server,
+               m.artist,
+               m.title,
+               m.creator,
+               MAX(m.last_update) AS last_update,
+               SUM(m.plays) AS total_plays,
+               MIN(m.diff) AS min_diff,
+               MAX(m.diff) AS max_diff,
+               COUNT(m.id) AS diffs_count,
+               MAX(m.cs) AS cs,
+                GROUP_CONCAT(CONCAT(m.id, '::', m.cs, '::', m.diff, '::', m.version) ORDER BY m.diff ASC SEPARATOR '|||') AS diffs,
+                COALESCE((
+                    SELECT COUNT(DISTINCT s.userid) 
+                    FROM scores s 
+                    JOIN maps m2 ON s.map_md5 = m2.md5 
+                    WHERE m2.set_id = m.set_id
+                ), 0) AS players_count,
+               COALESCE((
+                   SELECT MAX(pp) 
+                   FROM scores s 
+                   JOIN maps m2 ON s.map_md5 = m2.md5 
+                   WHERE m2.set_id = m.set_id AND s.status = 2
+               ), 0) AS max_pp
+        FROM maps m
+        WHERE {where_clause}
+        GROUP BY m.set_id, m.server, m.artist, m.title, m.creator
+        ORDER BY {order_by}
+        LIMIT :limit OFFSET :offset
+    """
+    
+    db_mapsets = await app.state.services.database.fetch_all(sql, params)
+    
+    response = []
+    for row in db_mapsets:
+        set_dict = dict(row)
+        if isinstance(set_dict["last_update"], str):
+            clean_date = set_dict["last_update"].replace("Z", "+00:00")
+            set_dict["last_update"] = datetime.fromisoformat(clean_date)
+            
+        max_diff = set_dict["max_diff"]
+        theoretical_max_pp = int(round(8.0 * (max_diff ** 2.2)))
+        
+        set_dict["max_pp"] = int(round(set_dict["max_pp"]))
+        set_dict["theoretical_max_pp"] = theoretical_max_pp
+        set_dict["players_count"] = int(round(set_dict.get("players_count", 0)))
+        
+        diffs = []
+        if set_dict.get("diffs"):
+            for item in set_dict["diffs"].split("|||"):
+                parts = item.split("::", 3)
+                if len(parts) == 4:
+                    try:
+                        diffs.append({
+                            "id": int(parts[0]),
+                            "cs": float(parts[1]),
+                            "diff": float(parts[2]),
+                            "version": parts[3]
+                        })
+                    except (ValueError, TypeError):
+                        continue
+        set_dict["difficulties"] = diffs
+        
+        response.append(MapSet.model_validate(set_dict))
+
+    return responses.success(
+        content=response,
+        meta={
+            "total": total_mapsets,
+            "page": page,
+            "page_size": page_size,
+        },
+    )
 
 @router.get("/maps")
 async def get_maps(
@@ -39,32 +180,107 @@ async def get_maps(
     filename: str | None = None,
     mode: int | None = None,
     frozen: bool | None = None,
+    query: str | None = None,
+    keys: int | None = None,
+    sort: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=100),
-    maps_service: Annotated[
-        MapsService,
-        Depends(api_dependencies.get_maps_service),
-    ],
 ) -> Success[list[Map]] | Failure:
-    listing = await maps_service.fetch_maps(
-        server=server,
-        set_id=set_id,
-        status=status,
-        artist=artist,
-        creator=creator,
-        filename=filename,
-        mode=mode,
-        frozen=frozen,
-        page=page,
-        page_size=page_size,
-    )
+    query_parts = []
+    params = {}
 
-    response = [Map.model_validate(rec) for rec in listing.maps]
+    if set_id is not None:
+        query_parts.append("m.set_id = :set_id")
+        params["set_id"] = set_id
+    if server is not None:
+        query_parts.append("m.server = :server")
+        params["server"] = server
+    if status is not None:
+        query_parts.append("m.status = :status")
+        params["status"] = status
+    if artist is not None:
+        query_parts.append("m.artist = :artist")
+        params["artist"] = artist
+    if creator is not None:
+        query_parts.append("m.creator = :creator")
+        params["creator"] = creator
+    if filename is not None:
+        query_parts.append("m.filename = :filename")
+        params["filename"] = filename
+    if mode is not None:
+        query_parts.append("m.mode = :mode")
+        params["mode"] = mode
+    if frozen is not None:
+        query_parts.append("m.frozen = :frozen")
+        params["frozen"] = frozen
+
+    if query and query.strip():
+        query_parts.append("(m.title LIKE :search_query OR m.artist LIKE :search_query OR m.creator LIKE :search_query OR m.filename LIKE :search_query)")
+        params["search_query"] = f"%{query.strip()}%"
+
+    if keys is not None:
+        query_parts.append("m.cs = :keys")
+        params["keys"] = keys
+
+    where_clause = " AND ".join(query_parts) if query_parts else "1=1"
+
+    order_by = "m.plays DESC"
+    if sort == "newest":
+        order_by = "m.id DESC"
+    elif sort == "diff_asc":
+        order_by = "m.diff ASC"
+    elif sort == "diff_desc":
+        order_by = "m.diff DESC"
+    elif sort == "max_pp_asc":
+        order_by = "max_pp ASC"
+    elif sort == "max_pp_desc":
+        order_by = "max_pp DESC"
+    elif sort == "theoretical_max_pp_asc":
+        order_by = "m.diff ASC"
+    elif sort == "theoretical_max_pp_desc":
+        order_by = "m.diff DESC"
+
+    offset = (page - 1) * page_size
+    params["limit"] = page_size
+    params["offset"] = offset
+
+    count_params = {k: v for k, v in params.items() if k not in ("limit", "offset")}
+    count_row = await app.state.services.database.fetch_one(
+        f"SELECT COUNT(*) AS total FROM maps m WHERE {where_clause}",
+        count_params
+    )
+    total_maps = count_row["total"] if count_row else 0
+
+    sql = f"""
+        SELECT m.*, 
+               COALESCE((SELECT MAX(pp) FROM scores s WHERE s.map_md5 = m.md5 AND s.status = 2), 0) AS max_pp
+        FROM maps m
+        WHERE {where_clause}
+        ORDER BY {order_by}
+        LIMIT :limit OFFSET :offset
+    """
+    
+    db_maps = await app.state.services.database.fetch_all(sql, params)
+    
+    response = []
+    for row in db_maps:
+        map_dict = dict(row)
+        if isinstance(map_dict["last_update"], str):
+            clean_date = map_dict["last_update"].replace("Z", "+00:00")
+            map_dict["last_update"] = datetime.fromisoformat(clean_date)
+            
+        diff = map_dict["diff"]
+        theoretical_max_pp = int(round(8.0 * (diff ** 2.2)))
+        
+        map_dict["max_pp"] = int(round(map_dict["max_pp"]))
+        map_dict["theoretical_max_pp"] = theoretical_max_pp
+        
+        response.append(Map.model_validate(map_dict))
 
     return responses.success(
         content=response,
         meta={
-            "total": listing.total_maps,
+            "total": total_maps,
             "page": page,
             "page_size": page_size,
         },

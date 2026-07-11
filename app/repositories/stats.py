@@ -182,14 +182,7 @@ class StatsRepository:
             [
                 {"id": player_id, "mode": mode}
                 for mode in (
-                    0,  # vn!std
-                    1,  # vn!taiko
-                    2,  # vn!catch
                     3,  # vn!mania
-                    4,  # rx!std
-                    5,  # rx!taiko
-                    6,  # rx!catch
-                    8,  # ap!std
                 )
             ],
         )

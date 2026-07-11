@@ -373,17 +373,10 @@ create index users_country_index
 	on users (country);
 
 insert into users (id, name, safe_name, priv, country, silence_end, email, pw_bcrypt, creation_time, latest_activity)
-values (1, 'BanchoBot', 'banchobot', 1, 'ca', 0, 'bot@akatsuki.pw',
+values (1, '응가봇', '응가봇', 1, 'ca', 0, 'bot@akatsuki.pw',
         '_______________________my_cool_bcrypt_______________________', UNIX_TIMESTAMP(), UNIX_TIMESTAMP());
 
-INSERT INTO stats (id, mode) VALUES (1, 0); # vn!std
-INSERT INTO stats (id, mode) VALUES (1, 1); # vn!taiko
-INSERT INTO stats (id, mode) VALUES (1, 2); # vn!catch
 INSERT INTO stats (id, mode) VALUES (1, 3); # vn!mania
-INSERT INTO stats (id, mode) VALUES (1, 4); # rx!std
-INSERT INTO stats (id, mode) VALUES (1, 5); # rx!taiko
-INSERT INTO stats (id, mode) VALUES (1, 6); # rx!catch
-INSERT INTO stats (id, mode) VALUES (1, 8); # ap!std
 
 
 # userid 2 is reserved for ppy in osu!, and the

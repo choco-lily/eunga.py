@@ -93,6 +93,22 @@ class RelationshipsRepository:
             for relationship in relationships
         ]
 
+    async def fetch_all_followers(
+        self,
+        user2: int,
+        type: RelationshipType | None = None,
+    ) -> list[Relationship]:
+        """Fetch all relationships where user2 is the target, i.e., followers."""
+        select_stmt = select(*READ_PARAMS).where(RelationshipsTable.user2 == user2)
+        if type is not None:
+            select_stmt = select_stmt.where(RelationshipsTable.type == type)
+
+        relationships = await self._database.fetch_all(select_stmt)
+        return [
+            self._deserialize_relationship(relationship)
+            for relationship in relationships
+        ]
+
     async def fetch_one(self, user1: int, user2: int) -> Relationship | None:
         """Fetch the relationship between two users, if one exists."""
         select_stmt = (

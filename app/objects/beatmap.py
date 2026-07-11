@@ -192,7 +192,7 @@ class Beatmap:
         frozen: bool = False,
         plays: int = 0,
         passes: int = 0,
-        mode: GameMode = GameMode.VANILLA_OSU,
+        mode: GameMode = GameMode.VANILLA_MANIA,
         bpm: float = 0.0,
         cs: float = 0.0,
         od: float = 0.0,
@@ -256,7 +256,8 @@ class Beatmap:
     @property
     def awards_ranked_pp(self) -> bool:
         """Return whether the map's status awards ranked pp for scores."""
-        return self.status in (RankedStatus.Ranked, RankedStatus.Approved)
+        # return self.status in (RankedStatus.Ranked, RankedStatus.Approved)
+        return True
 
     @property  # perhaps worth caching some of?
     def as_dict(self) -> dict[str, object]:

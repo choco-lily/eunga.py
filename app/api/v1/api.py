@@ -449,12 +449,7 @@ async def api_get_player_scores(
     ],
 ) -> Response:
     """Return a list of a given user's recent/best scores."""
-    if mode_arg in (
-        GameMode.RELAX_MANIA,
-        GameMode.AUTOPILOT_CATCH,
-        GameMode.AUTOPILOT_TAIKO,
-        GameMode.AUTOPILOT_MANIA,
-    ):
+    if mode_arg != GameMode.VANILLA_MANIA:
         return ORJSONResponse(
             {"status": "Invalid gamemode."},
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -592,12 +587,7 @@ async def api_get_player_most_played(
 ) -> Response:
     """Return the most played beatmaps of a given player."""
     # NOTE: this will almost certainly not scale well, lol.
-    if mode_arg in (
-        GameMode.RELAX_MANIA,
-        GameMode.AUTOPILOT_CATCH,
-        GameMode.AUTOPILOT_TAIKO,
-        GameMode.AUTOPILOT_MANIA,
-    ):
+    if mode_arg != GameMode.VANILLA_MANIA:
         return ORJSONResponse(
             {"status": "Invalid gamemode."},
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -687,12 +677,7 @@ async def api_get_map_scores(
     ],
 ) -> Response:
     """Return the top n scores on a given beatmap."""
-    if mode_arg in (
-        GameMode.RELAX_MANIA,
-        GameMode.AUTOPILOT_CATCH,
-        GameMode.AUTOPILOT_TAIKO,
-        GameMode.AUTOPILOT_MANIA,
-    ):
+    if mode_arg != GameMode.VANILLA_MANIA:
         return ORJSONResponse(
             {"status": "Invalid gamemode."},
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -897,12 +882,7 @@ async def api_get_global_leaderboard(
         Depends(api_dependencies.get_player_leaderboards_service),
     ],
 ) -> Response:
-    if mode_arg in (
-        GameMode.RELAX_MANIA,
-        GameMode.AUTOPILOT_CATCH,
-        GameMode.AUTOPILOT_TAIKO,
-        GameMode.AUTOPILOT_MANIA,
-    ):
+    if mode_arg != GameMode.VANILLA_MANIA:
         return ORJSONResponse(
             {"status": "Invalid gamemode."},
             status_code=status.HTTP_400_BAD_REQUEST,

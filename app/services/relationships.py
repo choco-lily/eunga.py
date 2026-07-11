@@ -44,12 +44,36 @@ class RelationshipsService:
         if not friend_ids:
             return []
         # friends who have since become hidden (restricted or unverified)
-        # are omitted unless the viewer is staff, matching their
-        # visibility everywhere else
-        viewer_is_staff = viewer.priv & Privileges.STAFF.value != 0
+        # are kept in the user's friend list so the relationship state is correct
         return await self.users.fetch_many(
             ids=friend_ids,
-            include_hidden=viewer_is_staff,
+            include_hidden=True,
+        )
+
+    async def fetch_following(self, user_id: int) -> list[User]:
+        relationships = await self.relationships.fetch_all(
+            user1=user_id,
+            type=RelationshipType.FRIEND,
+        )
+        following_ids = [relationship.user2 for relationship in relationships]
+        if not following_ids:
+            return []
+        return await self.users.fetch_many(
+            ids=following_ids,
+            include_hidden=True,
+        )
+
+    async def fetch_followers(self, user_id: int) -> list[User]:
+        relationships = await self.relationships.fetch_all_followers(
+            user2=user_id,
+            type=RelationshipType.FRIEND,
+        )
+        follower_ids = [relationship.user1 for relationship in relationships]
+        if not follower_ids:
+            return []
+        return await self.users.fetch_many(
+            ids=follower_ids,
+            include_hidden=True,
         )
 
     async def add_friend(self, viewer: User, target_id: int) -> AddFriendResult:
@@ -77,6 +101,18 @@ class RelationshipsService:
             player_id,
             target_id,
             type=RelationshipType.FRIEND,
+        )
+
+        await self.relationships._database.execute(
+            "INSERT INTO notifications (user_id, type, title, content, link, created_at) "
+            "VALUES (:user_id, :type, :title, :content, :link, NOW())",
+            {
+                "user_id": target_id,
+                "type": "new_follow",
+                "title": "새로운 팔로우",
+                "content": f"{viewer.name}님이 회원님을 팔로우하기 시작했습니다.",
+                "link": f"/u/{viewer.id}"
+            }
         )
 
         # the game server caches friends in memory for online players

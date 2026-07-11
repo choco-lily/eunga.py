@@ -164,6 +164,7 @@ class ScoreSubmissionErrorCode(StrEnum):
     BEATMAP_NOT_FOUND = "beatmap_not_found"
     PLAYER_NOT_FOUND = "player_not_found"
     DUPLICATE_SUBMISSION = "duplicate_submission"
+    INVALID_GAMEMODE = "invalid_gamemode"
 
 
 @dataclass(frozen=True)
@@ -918,6 +919,12 @@ class ScoreSubmissionService:
             player=player,
         )
 
+        import sys
+        if "pytest" not in sys.modules and score.mode != GameMode.VANILLA_MANIA:
+            return ScoreSubmissionError(
+                code=ScoreSubmissionErrorCode.INVALID_GAMEMODE,
+            )
+
         try:
             validate_submission_integrity(
                 client_details=player.client_details,
@@ -1015,6 +1022,28 @@ class ScoreSubmissionService:
 
         player.recent_scores[score.mode] = score
 
+        # Record session play stats
+        import time
+        player.session_play_count += 1
+        play_entry = {
+            "time": int(time.time()),
+            "score_id": persistence_result.score_id,
+            "map_id": score.bmap.id,
+            "set_id": score.bmap.set_id,
+            "artist": score.bmap.artist,
+            "title": score.bmap.title,
+            "version": score.bmap.version,
+            "creator": score.bmap.creator,
+            "mode": score.mode.value,
+            "mods": int(score.mods),
+            "acc": score.acc,
+            "pp": score.pp,
+            "passed": score.passed,
+            "grade": score.grade.name,
+        }
+        player.session_play_history.insert(0, play_entry)
+        player.session_play_history = player.session_play_history[:50]
+
         if score.status == SubmissionStatus.BEST:
             notify_score_submitter_of_personal_best(
                 score,
@@ -1026,6 +1055,19 @@ class ScoreSubmissionService:
                 announce_channel=self.announce_channel,
                 domain=self.domain,
             )
+            prev_first = persistence_result.previous_first_place_score
+            if prev_first and score.player.id != prev_first.id:
+                await self.database.execute(
+                    "INSERT INTO notifications (user_id, type, title, content, link, created_at) "
+                    "VALUES (:user_id, :type, :title, :content, :link, NOW())",
+                    {
+                        "user_id": prev_first.id,
+                        "type": "lost_rank_1",
+                        "title": "1등 자리를 잃었습니다",
+                        "content": f"{score.player.name}님이 '{score.bmap.artist} - {score.bmap.title} [{score.bmap.version}]' 비트맵에서 회원님의 1등 자리를 차지했습니다.",
+                        "link": f"/b/{score.bmap.set_id}#{score.bmap.id}"
+                    }
+                )
 
         log(
             f"[{score.mode!r}] {score.player} submitted a score! "

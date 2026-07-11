@@ -124,7 +124,7 @@ async def recalculate_user(
         "SELECT s.pp, s.acc FROM scores s "
         "INNER JOIN maps m ON s.map_md5 = m.md5 "
         "WHERE s.userid = :user_id AND s.mode = :mode "
-        "AND s.status = 2 AND m.status IN (2, 3) "  # ranked, approved
+        "AND s.status = 2 AND m.status >= -2 "  # 모든 맵 상태 반영
         "ORDER BY s.pp DESC",
         {"user_id": id, "mode": game_mode},
     )

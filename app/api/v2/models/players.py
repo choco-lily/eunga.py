@@ -8,6 +8,8 @@ from app._typing import UNSET
 from app._typing import _UnsetSentinel
 from app.api.v2.common.parameters import GameModeParam
 
+from datetime import datetime
+
 from . import BaseModel
 
 # input models
@@ -103,3 +105,14 @@ class PlayerStats(BaseModel):
 class SearchPlayer(BaseModel):
     id: int
     name: str
+
+
+class Notification(BaseModel):
+    id: int
+    user_id: int
+    type: str
+    title: str
+    content: str
+    link: str | None
+    is_read: bool
+    created_at: datetime

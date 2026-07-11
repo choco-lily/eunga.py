@@ -470,10 +470,9 @@ class StatsUpdateRequest(BasePacket):
 # TODO: these should probably be moved to the config.
 WELCOME_MSG = "\n".join(
     (
-        f"Welcome to {BASE_DOMAIN}.",
-        "To see a list of commands, use !help.",
-        f"We have a public (Discord)[{app.settings.DISCORD_INVITE}]!",
-        "Enjoy the server!",
+        "응가 서버에 오신 것을 환영합니다.",
+        "명령어 목록을 확인하려면 !help를 입력해 주세요.",
+        "서버를 즐겨주세요!",
     ),
 )
 
@@ -484,7 +483,7 @@ RESTRICTED_MSG = (
 )
 
 WELCOME_NOTIFICATION = app.packets.notification(
-    f"Welcome back to {BASE_DOMAIN}!\nRunning bancho.py v{app.settings.VERSION}.",
+    f"응가 서버에 돌아오신 것을 환영합니다!\nbancho.py v{app.settings.VERSION} 구동 중.",
 )
 
 
