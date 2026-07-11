@@ -62,6 +62,7 @@ class MapSetDifficulty(BaseModel):
     cs: float
     diff: float
     version: str
+    theoretical_max_pp: int = 0
 
 
 class MapSet(BaseModel):
