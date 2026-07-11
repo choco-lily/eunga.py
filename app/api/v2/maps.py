@@ -138,7 +138,10 @@ async def get_mapsets(
         max_diff = set_dict["max_diff"]
         theoretical_max_pp = int(round(8.0 * (max_diff ** 2.2)))
         
-        set_dict["max_pp"] = int(round(set_dict["max_pp"]))
+        max_pp = int(round(set_dict["max_pp"]))
+        theoretical_max_pp = max(theoretical_max_pp, max_pp)
+        
+        set_dict["max_pp"] = max_pp
         set_dict["theoretical_max_pp"] = theoretical_max_pp
         set_dict["players_count"] = int(round(set_dict.get("players_count", 0)))
         
@@ -272,7 +275,10 @@ async def get_maps(
         diff = map_dict["diff"]
         theoretical_max_pp = int(round(8.0 * (diff ** 2.2)))
         
-        map_dict["max_pp"] = int(round(map_dict["max_pp"]))
+        max_pp = int(round(map_dict["max_pp"]))
+        theoretical_max_pp = max(theoretical_max_pp, max_pp)
+        
+        map_dict["max_pp"] = max_pp
         map_dict["theoretical_max_pp"] = theoretical_max_pp
         
         response.append(Map.model_validate(map_dict))
