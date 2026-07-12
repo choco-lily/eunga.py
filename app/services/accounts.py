@@ -34,14 +34,14 @@ def validate_username(username: str, disallowed_names: Sequence[str]) -> list[st
     """Validate a (new) username, returning any rule violations.
 
     Usernames must:
-    - be within 2-15 characters in length
+    - be within 2-30 characters in length
     - not contain both ' ' and '_', one is fine
     - not be in the config's `disallowed_names` list
     """
     errors: list[str] = []
 
     if not regexes.USERNAME.match(username):
-        errors.append("Must be 2-15 characters in length.")
+        errors.append("Must be 2-30 characters in length.")
 
     if "_" in username and " " in username:
         errors.append('May contain "_" and " ", but not both.')
