@@ -34,6 +34,18 @@ class ProfileUpdate(BaseModel):
     userpage_content: str | None | SkipJsonSchema[_UnsetSentinel] = Field(
         default_factory=lambda: UNSET,
     )
+    name_ko: str | None | SkipJsonSchema[_UnsetSentinel] = Field(
+        default_factory=lambda: UNSET,
+    )
+    name_en: str | None | SkipJsonSchema[_UnsetSentinel] = Field(
+        default_factory=lambda: UNSET,
+    )
+    name_ja: str | None | SkipJsonSchema[_UnsetSentinel] = Field(
+        default_factory=lambda: UNSET,
+    )
+    preferred_lang: str | SkipJsonSchema[_UnsetSentinel] = Field(
+        default_factory=lambda: UNSET,
+    )
 
 
 class PasswordUpdate(BaseModel):
@@ -48,6 +60,10 @@ class Player(BaseModel):
     id: int
     name: str
     safe_name: str
+    name_ko: str | None
+    name_en: str | None
+    name_ja: str | None
+    preferred_lang: str
 
     priv: int
     country: str

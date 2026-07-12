@@ -46,6 +46,10 @@ class UsersTable(Base):
     custom_badge_icon = Column(String(64))
     userpage_content = Column(String(2048, collation="utf8"))
     api_key = Column(String(36))
+    name_ko = Column(String(32, collation="utf8"))
+    name_en = Column(String(32, collation="utf8"))
+    name_ja = Column(String(32, collation="utf8"))
+    preferred_lang = Column(String(8), nullable=False, server_default="ko")
 
     __table_args__ = (
         Index("users_priv_index", priv),
@@ -76,6 +80,10 @@ READ_PARAMS = (
     UsersTable.custom_badge_name,
     UsersTable.custom_badge_icon,
     UsersTable.userpage_content,
+    UsersTable.name_ko,
+    UsersTable.name_en,
+    UsersTable.name_ja,
+    UsersTable.preferred_lang,
 )
 
 
@@ -99,6 +107,10 @@ class User:
     custom_badge_icon: str | None
     userpage_content: str | None
     api_key: str | None
+    name_ko: str | None
+    name_en: str | None
+    name_ja: str | None
+    preferred_lang: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +143,10 @@ class UsersRepository:
             custom_badge_icon=row["custom_badge_icon"],
             userpage_content=row["userpage_content"],
             api_key=row.get("api_key"),
+            name_ko=row["name_ko"],
+            name_en=row["name_en"],
+            name_ja=row["name_ja"],
+            preferred_lang=row["preferred_lang"],
         )
 
     def _deserialize_search_user(self, row: MySQLRow) -> SearchUser:
@@ -345,6 +361,10 @@ class UsersRepository:
         userpage_content: str | None | _UnsetSentinel = UNSET,
         api_key: str | None | _UnsetSentinel = UNSET,
         pw_bcrypt: bytes | _UnsetSentinel = UNSET,
+        name_ko: str | None | _UnsetSentinel = UNSET,
+        name_en: str | None | _UnsetSentinel = UNSET,
+        name_ja: str | None | _UnsetSentinel = UNSET,
+        preferred_lang: str | _UnsetSentinel = UNSET,
     ) -> User | None:
         """Update a user in the database."""
         update_stmt = update(UsersTable).where(UsersTable.id == id)
@@ -382,6 +402,14 @@ class UsersRepository:
             update_stmt = update_stmt.values(api_key=api_key)
         if not isinstance(pw_bcrypt, _UnsetSentinel):
             update_stmt = update_stmt.values(pw_bcrypt=pw_bcrypt)
+        if not isinstance(name_ko, _UnsetSentinel):
+            update_stmt = update_stmt.values(name_ko=name_ko)
+        if not isinstance(name_en, _UnsetSentinel):
+            update_stmt = update_stmt.values(name_en=name_en)
+        if not isinstance(name_ja, _UnsetSentinel):
+            update_stmt = update_stmt.values(name_ja=name_ja)
+        if not isinstance(preferred_lang, _UnsetSentinel):
+            update_stmt = update_stmt.values(preferred_lang=preferred_lang)
 
         await self._database.execute(update_stmt)
 

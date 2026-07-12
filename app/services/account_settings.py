@@ -103,6 +103,10 @@ class AccountSettingsService:
         country: str | _UnsetSentinel = UNSET,
         preferred_mode: int | _UnsetSentinel = UNSET,
         userpage_content: str | None | _UnsetSentinel = UNSET,
+        name_ko: str | None | _UnsetSentinel = UNSET,
+        name_en: str | None | _UnsetSentinel = UNSET,
+        name_ja: str | None | _UnsetSentinel = UNSET,
+        preferred_lang: str | _UnsetSentinel = UNSET,
     ) -> User:
         """Apply a validated profile update, keeping the game server's
         session cache and the redis country leaderboards consistent."""
@@ -112,6 +116,10 @@ class AccountSettingsService:
             country=country,
             preferred_mode=preferred_mode,
             userpage_content=userpage_content,
+            name_ko=name_ko,
+            name_en=name_en,
+            name_ja=name_ja,
+            preferred_lang=preferred_lang,
         )
         assert updated_user is not None
 
@@ -120,6 +128,14 @@ class AccountSettingsService:
         if online_player is not None:
             if isinstance(username, str):
                 online_player.name = username
+            if not isinstance(name_ko, _UnsetSentinel):
+                online_player.name_ko = name_ko
+            if not isinstance(name_en, _UnsetSentinel):
+                online_player.name_en = name_en
+            if not isinstance(name_ja, _UnsetSentinel):
+                online_player.name_ja = name_ja
+            if not isinstance(preferred_lang, _UnsetSentinel):
+                online_player.preferred_lang = preferred_lang
             if isinstance(country, str):
                 online_player.geoloc["country"]["acronym"] = country
 

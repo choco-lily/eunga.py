@@ -860,6 +860,10 @@ async def handle_osu_login_request(
         login_time=login_time,
         is_tourney_client=osu_version.stream == "tourney",
         api_key=user_info.api_key,
+        name_ko=user_info.name_ko,
+        name_en=user_info.name_en,
+        name_ja=user_info.name_ja,
+        preferred_lang=user_info.preferred_lang,
     )
 
     data = bytearray(app.packets.protocol_version(19))
@@ -920,15 +924,14 @@ async def handle_osu_login_request(
     data += app.packets.silence_end(player.remaining_silence)
 
     # update our new player's stats, and broadcast them.
-    user_data = app.packets.user_presence(player) + app.packets.user_stats(player)
-
-    data += user_data
+    user_data_for_self = app.packets.user_presence(player, player) + app.packets.user_stats(player)
+    data += user_data_for_self
 
     if not player.restricted:
         # player is unrestricted, two way data
         for o in app.state.sessions.players:
-            # enqueue us to them
-            o.enqueue(user_data)
+            # enqueue us to them in their preferred language
+            o.enqueue(app.packets.user_presence(player, o) + app.packets.user_stats(player))
 
             # enqueue them to us.
             if not o.restricted:
@@ -938,7 +941,7 @@ async def handle_osu_login_request(
                     data += app.packets.bot_presence(o)
                     data += app.packets.bot_stats(o)
                 else:
-                    data += app.packets.user_presence(o)
+                    data += app.packets.user_presence(o, player)
                     data += app.packets.user_stats(o)
 
         # the player may have been sent mail while offline,
@@ -1002,7 +1005,7 @@ async def handle_osu_login_request(
                 data += app.packets.bot_presence(o)
                 data += app.packets.bot_stats(o)
             else:
-                data += app.packets.user_presence(o)
+                data += app.packets.user_presence(o, player)
                 data += app.packets.user_stats(o)
 
         data += app.packets.account_restricted()
@@ -2184,7 +2187,7 @@ class UserPresenceRequest(BasePacket):
                     # the most frequently requested user
                     packet = app.packets.bot_presence(target)
                 else:
-                    packet = app.packets.user_presence(target)
+                    packet = app.packets.user_presence(target, player)
 
                 player.enqueue(packet)
 
@@ -2200,8 +2203,8 @@ class UserPresenceRequestAll(BasePacket):
 
         buffer = bytearray()
 
-        for player in app.state.sessions.players.unrestricted:
-            buffer += app.packets.user_presence(player)
+        for target in app.state.sessions.players.unrestricted:
+            buffer += app.packets.user_presence(target, player)
 
         player.enqueue(bytes(buffer))
 

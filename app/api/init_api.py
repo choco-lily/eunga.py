@@ -101,6 +101,20 @@ async def lifespan(asgi_app: BanchoAPI) -> AsyncIterator[None]:
         );
     """)
 
+    # Run DB schema migrations for localized names and language preferences
+    for column, col_type in [
+        ("name_ko", "VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NULL"),
+        ("name_en", "VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NULL"),
+        ("name_ja", "VARCHAR(32) CHARACTER SET utf8 COLLATE utf8_general_ci NULL"),
+        ("preferred_lang", "VARCHAR(8) NOT NULL DEFAULT 'ko'"),
+    ]:
+        try:
+            await app.state.services.database.execute(
+                f"ALTER TABLE users ADD COLUMN {column} {col_type}"
+            )
+        except Exception:
+            pass
+
     await app.state.services.redis.initialize()  # type: ignore[unused-awaitable]
 
     if app.state.services.datadog is not None:

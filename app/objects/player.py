@@ -228,6 +228,10 @@ class Player:
         is_bot_client: bool = False,
         is_tourney_client: bool = False,
         api_key: str | None = None,
+        name_ko: str | None = None,
+        name_en: str | None = None,
+        name_ja: str | None = None,
+        preferred_lang: str = "ko",
     ) -> None:
         if geoloc is None:
             geoloc = {
@@ -238,6 +242,10 @@ class Player:
 
         self.id = id
         self.name = name
+        self.name_ko = name_ko
+        self.name_en = name_en
+        self.name_ja = name_ja
+        self.preferred_lang = preferred_lang
         self.priv = priv
         self.pw_bcrypt = pw_bcrypt
         self.token = token
@@ -293,6 +301,15 @@ class Player:
         self.last_np: LastNp | None = None
 
         self._packet_queue: list[bytes] = []
+
+    def name_for_lang(self, lang: str) -> str:
+        if lang == "ko" and self.name_ko:
+            return self.name_ko
+        if lang == "en" and self.name_en:
+            return self.name_en
+        if lang == "ja" and self.name_ja:
+            return self.name_ja
+        return self.name
 
     def __repr__(self) -> str:
         return f"<{self.name} ({self.id})>"

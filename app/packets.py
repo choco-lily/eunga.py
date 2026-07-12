@@ -1171,11 +1171,14 @@ def _user_presence(
     )
 
 
-def user_presence(player: Player) -> bytes:
+def user_presence(player: Player, recipient: Player | None = None) -> bytes:
+    name = player.name
+    if recipient is not None:
+        name = player.name_for_lang(recipient.preferred_lang)
     return write(
         ServerPackets.USER_PRESENCE,
         (player.id, osuTypes.i32),
-        (player.name, osuTypes.string),
+        (name, osuTypes.string),
         (player.utc_offset + 24, osuTypes.u8),
         (player.geoloc["country"]["numeric"], osuTypes.u8),
         (player.bancho_priv | (player.status.mode.as_vanilla << 5), osuTypes.u8),

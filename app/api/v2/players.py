@@ -618,6 +618,10 @@ async def update_player_profile(
         country=args.country,
         preferred_mode=args.preferred_mode,
         userpage_content=args.userpage_content,
+        name_ko=args.name_ko,
+        name_en=args.name_en,
+        name_ja=args.name_ja,
+        preferred_lang=args.preferred_lang,
     )
 
     response = Player.model_validate(updated_user)

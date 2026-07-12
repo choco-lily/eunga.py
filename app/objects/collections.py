@@ -224,6 +224,10 @@ class Players(list[Player]):
             silence_end=player.silence_end,
             donor_end=player.donor_end,
             api_key=player.api_key,
+            name_ko=player.name_ko,
+            name_en=player.name_en,
+            name_ja=player.name_ja,
+            preferred_lang=player.preferred_lang,
         )
 
     async def from_cache_or_sql(
@@ -286,6 +290,10 @@ async def initialize_ram_caches() -> None:
         token=Player.generate_token(),
         login_time=float(0x7FFFFFFF),  # (never auto-dc)
         is_bot_client=True,
+        name_ko=bot.name_ko,
+        name_en=bot.name_en,
+        name_ja=bot.name_ja,
+        preferred_lang=bot.preferred_lang,
     )
     app.state.sessions.players.append(app.state.sessions.bot)
 
