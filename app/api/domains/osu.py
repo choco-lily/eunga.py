@@ -818,10 +818,16 @@ def format_scores_response(leaderboard: BeatmapLeaderboardResult) -> bytes:
     assert leaderboard.beatmap_rating is not None
     assert leaderboard.score_rows is not None
 
+    status = (
+        int(RankedStatus.Loved)
+        if leaderboard.ranked_status == RankedStatus.Pending
+        else int(leaderboard.ranked_status)
+    )
+
     response_lines: list[str] = [
         # NOTE: fa stands for featured artist (for the ones that may not know)
         # {ranked_status}|{serv_has_osz2}|{bid}|{bsid}|{len(scores)}|{fa_track_id}|{fa_license_text}
-        f"{int(leaderboard.ranked_status)}|false|{leaderboard.beatmap_id}|{leaderboard.beatmap_set_id}|{len(leaderboard.score_rows)}|0|",
+        f"{status}|false|{leaderboard.beatmap_id}|{leaderboard.beatmap_set_id}|{len(leaderboard.score_rows)}|0|",
         # {offset}\n{beatmap_name}\n{rating}
         # TODO: server side beatmap offsets
         f"0\n{leaderboard.beatmap_name}\n{leaderboard.beatmap_rating}",
@@ -919,7 +925,12 @@ async def getScores(
         return Response(b"1|false")
     if leaderboard.code is BeatmapLeaderboardResultCode.NO_LEADERBOARD:
         assert leaderboard.ranked_status is not None
-        return Response(f"{int(leaderboard.ranked_status)}|false".encode())
+        status = (
+            int(RankedStatus.Loved)
+            if leaderboard.ranked_status == RankedStatus.Pending
+            else int(leaderboard.ranked_status)
+        )
+        return Response(f"{status}|false".encode())
 
     return Response(format_scores_response(leaderboard))
 
