@@ -359,6 +359,7 @@ async def calculate_score_submission_status(
             if score.bmap.status != RankedStatus.Pending:
                 score.rank = await score.calculate_placement()
         else:
+            score.pp = 0.0
             score.status = SubmissionStatus.FAILED
 
     score.time_elapsed = score_time if score.passed else fail_time
