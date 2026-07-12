@@ -199,7 +199,12 @@ class UsersRepository:
             select_stmt = select_stmt.where(UsersTable.id == id)
         if name is not None:
             select_stmt = select_stmt.where(
-                UsersTable.safe_name == make_safe_name(name),
+                or_(
+                    UsersTable.safe_name == make_safe_name(name),
+                    UsersTable.name_ko == name,
+                    UsersTable.name_en == name,
+                    UsersTable.name_ja == name,
+                )
             )
         if email is not None:
             select_stmt = select_stmt.where(UsersTable.email == email)

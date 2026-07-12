@@ -175,7 +175,15 @@ class Players(list[Player]):
         elif id is not None:
             return self._by_id.get(id)
         elif name is not None:
-            return self._by_name.get(make_safe_name(name))
+            safe_name = make_safe_name(name)
+            p = self._by_name.get(safe_name)
+            if p is not None:
+                return p
+            for player in self:
+                if (player.name_ko and make_safe_name(player.name_ko) == safe_name) or \
+                   (player.name_en and make_safe_name(player.name_en) == safe_name) or \
+                   (player.name_ja and make_safe_name(player.name_ja) == safe_name):
+                    return player
         return None
 
     async def get_sql(
