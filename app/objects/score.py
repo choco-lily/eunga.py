@@ -253,7 +253,7 @@ class Score:
                 self.bmap.md5,
                 self.max_combo,
                 self.perfect,
-                self.player.name,
+                self.player.name_for_lang(self.player.preferred_lang),
                 self.score,
                 self.grade.name,
                 int(self.mods),
