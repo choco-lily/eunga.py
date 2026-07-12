@@ -15,6 +15,9 @@ class LeaderboardEntry(BaseModel):
 
     player_id: int
     name: str
+    name_ko: str | None
+    name_en: str | None
+    name_ja: str | None
     country: str
     clan_id: int | None
     clan_name: str | None

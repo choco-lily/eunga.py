@@ -99,6 +99,9 @@ class Stat:
 class LeaderboardStatsRow:
     player_id: int
     name: str
+    name_ko: str | None
+    name_en: str | None
+    name_ja: str | None
     country: str
     tscore: int
     rscore: int
@@ -148,6 +151,9 @@ class StatsRepository:
         return LeaderboardStatsRow(
             player_id=row["player_id"],
             name=row["name"],
+            name_ko=row["name_ko"],
+            name_en=row["name_en"],
+            name_ja=row["name_ja"],
             country=row["country"],
             tscore=row["tscore"],
             rscore=row["rscore"],
@@ -258,6 +264,9 @@ class StatsRepository:
             select(
                 UsersTable.id.label("player_id"),
                 UsersTable.name,
+                UsersTable.name_ko,
+                UsersTable.name_en,
+                UsersTable.name_ja,
                 UsersTable.country,
                 StatsTable.tscore,
                 StatsTable.rscore,
