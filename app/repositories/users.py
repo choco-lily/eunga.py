@@ -117,6 +117,9 @@ class User:
 class SearchUser:
     id: int
     name: str
+    name_ko: str | None
+    name_en: str | None
+    name_ja: str | None
 
 
 class UsersRepository:
@@ -153,6 +156,9 @@ class UsersRepository:
         return SearchUser(
             id=row["id"],
             name=row["name"],
+            name_ko=row["name_ko"],
+            name_en=row["name_en"],
+            name_ja=row["name_ja"],
         )
 
     async def create(
@@ -289,7 +295,13 @@ class UsersRepository:
         include_hidden: bool = False,
         always_visible_id: int | None = None,
     ) -> list[SearchUser]:
-        select_stmt = select(UsersTable.id, UsersTable.name).order_by(
+        select_stmt = select(
+            UsersTable.id,
+            UsersTable.name,
+            UsersTable.name_ko,
+            UsersTable.name_en,
+            UsersTable.name_ja,
+        ).order_by(
             UsersTable.id.asc(),
         )
 
@@ -299,7 +311,14 @@ class UsersRepository:
             )
 
         if name is not None:
-            select_stmt = select_stmt.where(UsersTable.name.like(f"%{name}%"))
+            select_stmt = select_stmt.where(
+                or_(
+                    UsersTable.name.like(f"%{name}%"),
+                    UsersTable.name_ko.like(f"%{name}%"),
+                    UsersTable.name_en.like(f"%{name}%"),
+                    UsersTable.name_ja.like(f"%{name}%"),
+                )
+            )
 
         users = await self._database.fetch_all(select_stmt)
         return [self._deserialize_search_user(user) for user in users]

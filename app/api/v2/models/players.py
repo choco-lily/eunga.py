@@ -121,6 +121,9 @@ class PlayerStats(BaseModel):
 class SearchPlayer(BaseModel):
     id: int
     name: str
+    name_ko: str | None
+    name_en: str | None
+    name_ja: str | None
 
 
 class Notification(BaseModel):
