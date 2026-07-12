@@ -819,7 +819,7 @@ def format_scores_response(leaderboard: BeatmapLeaderboardResult) -> bytes:
     assert leaderboard.score_rows is not None
 
     status = (
-        int(RankedStatus.Loved)
+        int(RankedStatus.Ranked)
         if leaderboard.ranked_status == RankedStatus.Pending
         else int(leaderboard.ranked_status)
     )
@@ -926,7 +926,7 @@ async def getScores(
     if leaderboard.code is BeatmapLeaderboardResultCode.NO_LEADERBOARD:
         assert leaderboard.ranked_status is not None
         status = (
-            int(RankedStatus.Loved)
+            int(RankedStatus.Ranked)
             if leaderboard.ranked_status == RankedStatus.Pending
             else int(leaderboard.ranked_status)
         )
