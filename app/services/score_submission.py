@@ -681,13 +681,13 @@ def apply_score_stats(score: Score, stats: ModeData) -> ScoreStatsUpdates:
     if not score.passed:
         return updates
 
-    assert score.bmap is not None
-    if not score.bmap.has_leaderboard:
-        return updates
-
     if score.max_combo > stats.max_combo:
         stats.max_combo = score.max_combo
         updates["max_combo"] = stats.max_combo
+
+    assert score.bmap is not None
+    if not score.bmap.has_leaderboard:
+        return updates
 
     if score.bmap.awards_ranked_pp and score.status == SubmissionStatus.BEST:
         # Official osu! includes loved maps in ranked score and grade counts.
